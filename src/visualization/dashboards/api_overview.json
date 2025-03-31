@@ -1,0 +1,45 @@
+{
+  "version": "8.7.0",
+  "objects": [
+    {
+      "id": "api-overview-dashboard",
+      "type": "dashboard",
+      "attributes": {
+        "title": "API Overview Dashboard",
+        "description": "Overall view of API performance across environments",
+        "hits": 0,
+        "timeRestore": true,
+        "useMargins": true,
+        "timeTo": "now",
+        "timeFrom": "now-24h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 60000
+        },
+        "panels": []
+      },
+      "references": [
+        {
+          "id": "api-response-time-chart",
+          "name": "panel_0",
+          "type": "visualization"
+        },
+        {
+          "id": "api-error-rate-chart",
+          "name": "panel_1",
+          "type": "visualization"
+        },
+        {
+          "id": "api-request-volume",
+          "name": "panel_2",
+          "type": "visualization"
+        },
+        {
+          "id": "environment-distribution",
+          "name": "panel_3",
+          "type": "visualization"
+        }
+      ]
+    }
+  ]
+} 

@@ -1,0 +1,50 @@
+{
+  "version": "8.7.0",
+  "objects": [
+    {
+      "id": "cross-environment-dashboard",
+      "type": "dashboard",
+      "attributes": {
+        "title": "Cross-Environment Analysis Dashboard",
+        "description": "Analysis of API behavior across different environments",
+        "hits": 0,
+        "timeRestore": true,
+        "useMargins": true,
+        "timeTo": "now",
+        "timeFrom": "now-24h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 60000
+        },
+        "panels": []
+      },
+      "references": [
+        {
+          "id": "environment-comparison-chart",
+          "name": "panel_0",
+          "type": "visualization"
+        },
+        {
+          "id": "correlated-anomalies-chart",
+          "name": "panel_1",
+          "type": "visualization"
+        },
+        {
+          "id": "request-journey-map",
+          "name": "panel_2",
+          "type": "visualization"
+        },
+        {
+          "id": "environment-specific-metrics",
+          "name": "panel_3",
+          "type": "visualization"
+        },
+        {
+          "id": "predicted-issues-table",
+          "name": "panel_4",
+          "type": "visualization"
+        }
+      ]
+    }
+  ]
+} 

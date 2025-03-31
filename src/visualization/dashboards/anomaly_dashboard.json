@@ -1,0 +1,50 @@
+{
+  "version": "8.7.0",
+  "objects": [
+    {
+      "id": "anomaly-detection-dashboard",
+      "type": "dashboard",
+      "attributes": {
+        "title": "Anomaly Detection Dashboard",
+        "description": "View of detected anomalies across API endpoints and environments",
+        "hits": 0,
+        "timeRestore": true,
+        "useMargins": true,
+        "timeTo": "now",
+        "timeFrom": "now-24h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 60000
+        },
+        "panels": []
+      },
+      "references": [
+        {
+          "id": "anomalies-timeline",
+          "name": "panel_0",
+          "type": "visualization"
+        },
+        {
+          "id": "anomalies-by-type",
+          "name": "panel_1",
+          "type": "visualization"
+        },
+        {
+          "id": "anomalies-by-environment",
+          "name": "panel_2",
+          "type": "visualization"
+        },
+        {
+          "id": "anomalies-by-severity",
+          "name": "panel_3",
+          "type": "visualization"
+        },
+        {
+          "id": "recent-anomalies-table",
+          "name": "panel_4",
+          "type": "visualization"
+        }
+      ]
+    }
+  ]
+} 

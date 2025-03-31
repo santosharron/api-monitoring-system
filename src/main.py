@@ -15,6 +15,7 @@ from src.storage.database import get_database
 from src.collection.collector_manager import CollectorManager
 from src.analyzers.analyzer_manager import AnalyzerManager
 from src.alerting.alert_manager import AlertManager
+from src.visualization.dashboard_initializer import DashboardInitializer
 
 # Create settings instance
 settings = Settings()
@@ -53,13 +54,14 @@ app.include_router(api_router, prefix="/api/v1")
 collector_manager = None
 analyzer_manager = None
 alert_manager = None
+dashboard_initializer = None
 
 @app.on_event("startup")
 async def startup_event():
     """
     Initialize application components on startup.
     """
-    global collector_manager, analyzer_manager, alert_manager
+    global collector_manager, analyzer_manager, alert_manager, dashboard_initializer
     
     try:
         logger.info("Starting API Monitoring System")
@@ -72,6 +74,7 @@ async def startup_event():
         collector_manager = CollectorManager()
         analyzer_manager = AnalyzerManager()
         alert_manager = AlertManager()
+        dashboard_initializer = DashboardInitializer()
         
         # Start components with error handling
         try:
@@ -88,6 +91,12 @@ async def startup_event():
             await alert_manager.start_alerting()
         except Exception as e:
             logger.error(f"Error starting alert manager: {str(e)}")
+            
+        # Initialize Kibana dashboards
+        try:
+            await dashboard_initializer.initialize_dashboards()
+        except Exception as e:
+            logger.error(f"Error initializing Kibana dashboards: {str(e)}")
         
         logger.info("API Monitoring System started successfully")
         
@@ -165,12 +174,41 @@ async def health_check():
             "collector_manager": "running" if collector_manager and collector_manager.running else "stopped",
             "analyzer_manager": "running" if analyzer_manager and analyzer_manager.running else "stopped",
             "alert_manager": "running" if alert_manager and alert_manager.running else "stopped",
+            "kibana_dashboards": "initialized" if dashboard_initializer else "not_initialized",
             "database": {
                 "initialized": db.initialized,
                 "elasticsearch": "available" if db.es_available else "unavailable",
                 "mongodb": "available" if db.mongo_available else "unavailable"
             }
         }
+    }
+
+@app.get("/dashboards")
+async def get_dashboards():
+    """
+    Get available dashboards.
+    """
+    if not dashboard_initializer:
+        return {"error": "Dashboard initializer not available"}
+    
+    return {
+        "dashboards": [
+            {
+                "id": "api-overview-dashboard",
+                "name": "API Overview",
+                "url": dashboard_initializer.get_dashboard_url("api-overview-dashboard")
+            },
+            {
+                "id": "anomaly-detection-dashboard",
+                "name": "Anomaly Detection",
+                "url": dashboard_initializer.get_dashboard_url("anomaly-detection-dashboard")
+            },
+            {
+                "id": "cross-environment-dashboard",
+                "name": "Cross-Environment Analysis",
+                "url": dashboard_initializer.get_dashboard_url("cross-environment-dashboard")
+            }
+        ]
     }
 
 if __name__ == "__main__":
