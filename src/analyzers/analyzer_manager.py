@@ -257,25 +257,28 @@ class AnalyzerManager:
     
     async def _check_configuration_changes(self):
         """
-        Check for configuration changes in the database.
+        Check for configuration changes.
         """
         try:
-            # Get updated API sources
-            api_sources = await self.db.get_api_sources(updated_since=datetime.utcnow())
+            # Get API sources from database
+            current_api_sources = await self.db.get_api_sources(active=True)
             
-            # Update analyzers with new configuration
-            for api_source in api_sources:
-                if api_source.id in self.analyzers:
+            # Check for new API sources
+            current_api_ids = {api_source.id for api_source in current_api_sources}
+            existing_api_ids = set(self.analyzers.keys())
+            
+            # Commented out this part for debugging
+            # APIs to remove (no longer in database or inactive)
+            # for api_id in existing_api_ids - current_api_ids:
+            #     self.remove_analyzers(api_id)
+            
+            # APIs to add (new in database)
+            for api_source in current_api_sources:
+                if api_source.id not in existing_api_ids:
+                    await self.add_analyzers(api_source)
+                else:
+                    # Update existing analyzers with latest configuration
                     for analyzer in self.analyzers[api_source.id]:
                         analyzer.update_config(api_source)
-                    logger.debug(f"Updated configuration for API {api_source.id} analyzers")
-                else:
-                    await self.add_analyzers(api_source)
-            
-            # Check for deleted API sources
-            current_api_ids = set(api_source.id for api_source in api_sources)
-            for api_id in list(self.analyzers.keys()):
-                if api_id not in current_api_ids:
-                    self.remove_analyzers(api_id)
         except Exception as e:
             logger.error(f"Error checking configuration changes for analyzers: {str(e)}") 

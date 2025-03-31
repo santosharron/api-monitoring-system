@@ -1,178 +1,241 @@
 # AI-Powered API Monitoring and Anomaly Detection System
 
-An intelligent monitoring solution for large-scale, distributed multi-API platforms that can detect anomalies, predict potential issues, and provide actionable insights across on-premises, cloud, and multi-cloud environments.
+This system provides real-time monitoring, anomaly detection, and predictive analytics for distributed APIs across multiple environments (AWS, Azure, GCP).
+
+## System Architecture
+
+```
+├── Data Collection Layer
+│   ├── API Collectors (Real-time metrics)
+│   └── Log Aggregators (ELK Stack)
+├── Analysis Layer
+│   ├── Response Time Analyzer
+│   ├── Error Rate Analyzer
+│   ├── Pattern Analyzer
+│   └── Cross-Environment Analyzer
+├── Storage Layer
+│   ├── MongoDB (API configurations, metrics)
+│   └── Elasticsearch (Logs, time-series data)
+└── Presentation Layer
+    ├── REST API
+    └── Kibana Dashboards
+```
 
 ## Features
 
-- **Cross-Environment Monitoring**: Monitor APIs across on-premises, cloud, and multi-cloud infrastructures
-- **Anomaly Detection**: Identify response time and error rate anomalies using AI algorithms
-- **Predictive Analytics**: Forecast potential issues before they impact users
-- **End-to-End Request Tracking**: Follow request journeys across distributed environments
-- **Adaptive Alerting**: Smart alerts that reduce noise and provide actionable insights
-- **Visualization Dashboards**: Real-time and historical performance visualization
-- **Automatic API Discovery**: Automatically detect and monitor new APIs
-- **Kibana Integration**: Pre-configured dashboards for Elasticsearch data visualization
+1. **Multi-Environment Support**
+   - AWS, Azure, and GCP integration
+   - Cross-environment correlation
+   - Environment-specific thresholds
 
-## Architecture
+2. **Response Time Monitoring**
+   - Real-time response time tracking
+   - Spike detection
+   - Pattern change detection
+   - Historical trend analysis
 
-The system consists of the following components:
+3. **Error Rate Analysis**
+   - Real-time error tracking
+   - Error pattern detection
+   - Cross-environment error correlation
+   - 99th percentile threshold monitoring
 
-- **Collectors**: Gather logs and metrics from various API sources
-- **Storage**: Centralized storage for logs, metrics, and analysis results
-- **Analyzers**: AI-powered components for anomaly detection and prediction
-- **Alerting**: Intelligent alerting system with customizable rules
-- **API**: RESTful API for system configuration and data access
-- **Visualization**: Dashboards for monitoring and insights
+4. **Predictive Analytics**
+   - Pattern-based prediction
+   - Impact forecasting
+   - Anomaly score-based prediction
+   - Historical trend analysis
 
-## Installation
+5. **Alerting System**
+   - Multi-channel notifications (Slack, Email)
+   - Severity-based alerting
+   - Environment-aware alerts
+   - Cross-environment impact alerts
+
+## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Python 3.8+
-- pip
+1. Python 3.8+
+2. MongoDB Atlas account
+3. Elasticsearch Cloud account
+4. Docker (optional, for local development)
 
-### Setup
+### Installation
 
-1. Clone the repository
-2. Install dependencies:
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd api-monitoring-system
 ```
+
+2. Create and activate virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
-3. Configure the environment variables:
-```
+
+4. Configure environment variables:
+```bash
 cp .env.example .env
-# Edit .env with your configuration
-```
-4. Start the required services using Docker Compose:
-```
-docker-compose up -d
-```
-5. Run the system:
-```
-python -m src.main
+# Edit .env with your credentials
 ```
 
-### Manual Setup (Without Docker)
+### Running the System
 
-If you prefer to run the application without Docker, follow these steps:
+1. Start the system:
+```bash
+# On Windows
+start_cloud.bat
 
-1. Install Python dependencies:
-```
-pip install -r requirements.txt
-```
-
-2. Install and run Elasticsearch (8.7.0):
-   - Download from the [Elasticsearch website](https://www.elastic.co/downloads/past-releases/elasticsearch-8-7-0)
-   - Extract and run: `bin/elasticsearch` (Linux/Mac) or `bin\elasticsearch.bat` (Windows)
-   - Verify it's running at http://localhost:9200
-
-3. Install and run Kibana (8.7.0):
-   - Download from the [Kibana website](https://www.elastic.co/downloads/past-releases/kibana-8-7-0)
-   - Extract and run: `bin/kibana` (Linux/Mac) or `bin\kibana.bat` (Windows)
-   - Access Kibana at http://localhost:5601
-
-4. Install and run MongoDB:
-   - Download from the [MongoDB website](https://www.mongodb.com/try/download/community)
-   - Install and start the MongoDB service
-   - Verify it's running on port 27017
-
-5. Install and run Redis:
-   - Download from the [Redis website](https://redis.io/download)
-   - Extract and run: `src/redis-server` (Linux/Mac) or use the Windows installer
-   - Verify it's running on port 6379
-
-6. Update your `.env` file with the correct connection details:
-```
-MONGODB_URI=mongodb://localhost:27017/api_monitoring
-ELASTICSEARCH_HOSTS=http://localhost:9200
-REDIS_HOST=localhost
-REDIS_PORT=6379
+# On Linux/Mac
+./start_cloud.sh
 ```
 
-7. Start the application:
-```
-python -m src.main
-```
+2. The system will:
+   - Connect to MongoDB Atlas
+   - Set up Elasticsearch indices
+   - Create API sources
+   - Generate test data
+   - Start monitoring
+   - Run demonstration
 
-## Configuration
+## Monitoring and Testing
 
-Configure the system through the `.env` file or environment variables. See `config/settings.py` for available options.
+### 1. API Endpoints
 
-## Kibana Integration
+Access the API documentation at http://localhost:8000/docs
 
-The system automatically integrates with Kibana to provide visualizations for your API metrics.
+Key endpoints:
+- `GET /api/v1/apis` - List monitored APIs
+- `GET /api/v1/metrics` - Get API metrics
+- `GET /api/v1/anomalies` - Get detected anomalies
+- `GET /api/v1/predictions` - Get predictions
+- `GET /api/v1/alerts` - Get active alerts
 
-### Accessing Kibana
+### 2. Kibana Dashboard
 
-After starting the system, Kibana will be available at http://localhost:5601
+Access Kibana at http://localhost:5601
 
-### Available Dashboards
-
-The system automatically sets up the following dashboards:
-
-1. **API Overview Dashboard**: Shows general API performance metrics
-   - Response time by API endpoint
-   - Error rates by API endpoint
-   - Request volume by API endpoint
+Available dashboards:
+1. **API Health Overview**
+   - Response time trends
+   - Error rates
+   - Success rates
    - Environment distribution
 
-2. **Anomaly Detection Dashboard**: Shows detected anomalies
-   - Anomalies timeline
-   - Anomalies by type
-   - Anomalies by environment
-   - Anomalies by severity
+2. **Anomaly Detection**
+   - Detected anomalies
+   - Severity distribution
+   - Pattern changes
+   - Impact analysis
 
-3. **Cross-Environment Analysis Dashboard**: Shows analysis across environments
-   - Environment comparison charts
-   - Correlated anomalies across environments
-   - Request journey maps
-   - Environment-specific metrics
+3. **Cross-Environment Analysis**
+   - Environment correlation
+   - Impact scores
+   - Issue propagation
 
-### Accessing Dashboards from API
+### 3. Logs and Monitoring
 
-You can get the URLs for all available dashboards through the API:
+Logs are available in multiple locations:
 
-```
-GET /dashboards
-```
+1. **Application Logs**
+   - Console output
+   - Log files in `logs/` directory
+   - Log levels: INFO, WARNING, ERROR
 
-### Creating Custom Visualizations
+2. **Elasticsearch Logs**
+   - Access via Kibana
+   - Search and filter capabilities
+   - Time-series visualization
 
-You can create custom visualizations in Kibana using the following index patterns:
+3. **MongoDB Logs**
+   - Database operations
+   - Connection status
+   - Performance metrics
 
-- `api-metrics-*`: For API performance metrics
-- `api-anomalies-*`: For detected anomalies
-- `api-predictions-*`: For system predictions
+### 4. Testing Scenarios
 
-## Automatic API Discovery
-
-The system automatically discovers and monitors new APIs in your environment:
-
-- **Network Scanning**: Detects APIs by scanning common ports on your network
-- **Log Analysis**: Discovers APIs by analyzing log patterns
-- **Service Registry Integration**: Connects to service registries (if configured)
-
-You can view discovered APIs through the API:
-
-```
-GET /api/v1/sources
+1. **Response Time Testing**
+```bash
+# Monitor response time for specific API
+curl "http://localhost:8000/api/v1/metrics?api_id=prod-api-1&metric_type=response_time"
 ```
 
-## Manual API Registration
-
-Use the REST API to manually configure monitoring for your APIs:
-
+2. **Error Rate Testing**
+```bash
+# Check error rates across environments
+curl "http://localhost:8000/api/v1/metrics?metric_type=error_rate"
 ```
-POST /api/v1/sources
-{
-  "name": "payment-service",
-  "type": "rest",
-  "environment": "aws",
-  "endpoint": "https://api.example.com/payments"
-}
+
+3. **Anomaly Detection**
+```bash
+# Get detected anomalies
+curl "http://localhost:8000/api/v1/anomalies"
 ```
+
+4. **Cross-Environment Analysis**
+```bash
+# Get cross-environment analysis
+curl "http://localhost:8000/api/v1/cross_environment_analysis"
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **MongoDB Connection Issues**
+   - Check MongoDB Atlas connection string
+   - Verify network access
+   - Check credentials
+
+2. **Elasticsearch Connection Issues**
+   - Verify Cloud ID
+   - Check API key
+   - Confirm network access
+
+3. **No Active API Sources**
+   - Run `python -m src.scripts.create_real_api`
+   - Check API source configuration
+   - Verify database connection
+
+4. **Missing Metrics**
+   - Run `python -m src.scripts.generate_test_data`
+   - Check collector status
+   - Verify API endpoints
+
+### Log Analysis
+
+1. **Application Logs**
+   - Check `logs/app.log`
+   - Look for ERROR level messages
+   - Monitor connection status
+
+2. **Database Logs**
+   - Check MongoDB logs
+   - Monitor Elasticsearch status
+   - Verify data ingestion
+
+## System Requirements
+
+- CPU: 2+ cores
+- RAM: 4GB+
+- Storage: 20GB+
+- Network: Stable internet connection
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
 
 ## License
 
-MIT 
+MIT License - See LICENSE file for details

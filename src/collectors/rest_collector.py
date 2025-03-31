@@ -27,13 +27,41 @@ class RestApiCollector(BaseCollector):
         """
         super().__init__(api_source)
         self.session = None
+        self.last_collection = None
+        self.metrics_count = 0
+    
+    async def initialize(self):
+        """
+        Initialize the collector.
+        """
+        # Create a session for REST API requests
+        await self._ensure_session()
+        logger.debug(f"Initialized REST API collector for {self.api_source.name}")
+    
+    def is_running(self) -> bool:
+        """
+        Check if the collector is running.
+        
+        Returns:
+            True if the collector is running, False otherwise.
+        """
+        return self.enabled
+    
+    async def stop(self):
+        """
+        Stop the collector.
+        """
+        if self.session and not self.session.closed:
+            await self.session.close()
+            self.session = None
+        logger.debug(f"Stopped REST API collector for {self.api_source.name}")
     
     async def _ensure_session(self):
         """
         Ensure that an HTTP session exists.
         """
         if self.session is None or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=self.api_source.timeout)
+            timeout = aiohttp.ClientTimeout(total=30)  # Default timeout of 30 seconds
             self.session = aiohttp.ClientSession(timeout=timeout)
     
     async def collect_metrics(self) -> List[ApiMetric]:
@@ -49,7 +77,7 @@ class RestApiCollector(BaseCollector):
             await self._ensure_session()
             
             # For REST APIs, we'll make a health check request to the base endpoint
-            url = str(self.api_source.endpoint)
+            url = str(self.api_source.endpoint) if self.api_source.endpoint else self.api_source.base_url
             headers = self.api_source.headers or {}
             
             # Add authentication if configured
@@ -85,16 +113,24 @@ class RestApiCollector(BaseCollector):
                         error_message = f"HTTP error {status_code}"
             except aiohttp.ClientError as e:
                 error = True
-                error_message = str(e)
+                error_message = f"Connection error: {str(e)}"
+                # For cloud environments, simulate a response to keep metrics flowing
+                status_code = 503  # Service Unavailable
             except asyncio.TimeoutError:
                 error = True
                 error_message = "Request timed out"
+                # For cloud environments, simulate a response to keep metrics flowing
+                status_code = 504  # Gateway Timeout
             finally:
                 end_time = time.time()
                 response_time = (end_time - start_time) * 1000  # Convert to milliseconds
             
             # Create environment-specific metadata
             metadata = self._get_environment_metadata()
+            
+            # Add cloud-specific metadata
+            metadata["is_cloud_environment"] = True
+            metadata["collection_timestamp"] = datetime.utcnow().isoformat()
             
             # Create metric
             metric = self.create_metric(
@@ -113,6 +149,10 @@ class RestApiCollector(BaseCollector):
             )
             
             metrics.append(metric)
+            
+            # Update metrics counter
+            self.metrics_count += 1
+            self.last_collection = datetime.utcnow()
             
         except Exception as e:
             logger.error(f"Error collecting REST API metrics for {self.api_source.name}: {str(e)}")

@@ -1,270 +1,183 @@
 """
-Pattern analyzer for API monitoring system.
+Pattern analyzer for API metrics.
 """
 import logging
-import numpy as np
-from typing import List, Dict, Optional, Any
+from typing import List, Dict
 from datetime import datetime, timedelta
+import numpy as np
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
-from src.models.api import ApiSource, ApiMetrics, Anomaly, Environment
+from src.models.api import ApiSource, ApiMetric, Anomaly, Environment
 
 logger = logging.getLogger(__name__)
 
 class PatternAnalyzer:
-    """
-    Analyzer for detecting patterns in API metrics.
-    """
-    def __init__(self, api_source: ApiSource):
+    """Analyzes patterns in API metrics to detect anomalies."""
+    
+    def __init__(self, api_source=None):
         """
         Initialize the pattern analyzer.
         
         Args:
-            api_source: The API source to analyze.
+            api_source: API source to analyze. This parameter is optional and can be None
+                        for backward compatibility.
         """
         self.api_source = api_source
-        self.patterns = {}
-        self.last_analysis = None
+        self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        self.lof = LocalOutlierFactor(n_neighbors=20, contamination=0.1)
     
-    async def analyze(self, metrics: List[ApiMetrics]) -> List[Anomaly]:
-        """
-        Analyze metrics to detect patterns.
-        
-        Args:
-            metrics: List of API metrics to analyze.
-            
-        Returns:
-            List of anomalies detected.
-        """
-        if not metrics:
-            logger.debug(f"No metrics to analyze for {self.api_source.name}")
-            return []
-        
-        # Record analysis time
-        self.last_analysis = datetime.utcnow()
-        
-        # Group metrics by endpoint
-        endpoint_metrics = self._group_by_endpoint(metrics)
-        
-        # Detect patterns and anomalies
+    def cleanup(self):
+        """Clean up resources used by the analyzer."""
+        # Nothing specific to clean up for this analyzer
+        # This method is required by the analyzer manager
+        pass
+    
+    def update_config(self, api_source: ApiSource):
+        """Update the analyzer configuration with a new API source."""
+        self.api_source = api_source
+        # Reset models if needed
+        self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        self.lof = LocalOutlierFactor(n_neighbors=20, contamination=0.1)
+    
+    async def analyze(self, metrics: List[ApiMetric]) -> List[Anomaly]:
+        """Analyze metrics to detect pattern-based anomalies."""
         anomalies = []
         
-        for endpoint_id, metrics_list in endpoint_metrics.items():
-            # Perform pattern analysis on metrics for this endpoint
-            endpoint_anomalies = self._analyze_endpoint_patterns(endpoint_id, metrics_list)
-            anomalies.extend(endpoint_anomalies)
-        
-        return anomalies
+        try:
+            # Group metrics by endpoint
+            endpoint_metrics = self._group_by_endpoint(metrics)
+            
+            # Analyze each endpoint
+            for endpoint_id, endpoint_data in endpoint_metrics.items():
+                endpoint_anomalies = self._analyze_endpoint_patterns(endpoint_id, endpoint_data)
+                anomalies.extend(endpoint_anomalies)
+            
+            return anomalies
+            
+        except Exception as e:
+            logger.error(f"Error analyzing patterns: {str(e)}")
+            return []
     
-    def _group_by_endpoint(self, metrics: List[ApiMetrics]) -> Dict[str, List[ApiMetrics]]:
-        """
-        Group metrics by endpoint.
-        
-        Args:
-            metrics: List of API metrics.
-            
-        Returns:
-            Dictionary of metrics grouped by endpoint ID.
-        """
+    def _group_by_endpoint(self, metrics: List[ApiMetric]) -> Dict[str, List[ApiMetric]]:
+        """Group metrics by endpoint."""
         grouped = {}
-        
         for metric in metrics:
-            endpoint_id = metric.endpoint_id
-            
-            if endpoint_id not in grouped:
-                grouped[endpoint_id] = []
-            
-            grouped[endpoint_id].append(metric)
-        
+            key = f"{metric.api_id}:{metric.endpoint}:{metric.method}"
+            if key not in grouped:
+                grouped[key] = []
+            grouped[key].append(metric)
         return grouped
     
-    def _analyze_endpoint_patterns(self, endpoint_id: str, metrics: List[ApiMetrics]) -> List[Anomaly]:
-        """
-        Analyze patterns in metrics for a specific endpoint.
-        
-        Args:
-            endpoint_id: The endpoint ID.
-            metrics: List of metrics for the endpoint.
-            
-        Returns:
-            List of anomalies detected.
-        """
+    def _analyze_endpoint_patterns(self, endpoint_id: str, metrics: List[ApiMetric]) -> List[Anomaly]:
+        """Analyze patterns for a specific endpoint."""
         anomalies = []
         
-        # Sort metrics by timestamp
-        metrics.sort(key=lambda m: m.timestamp)
-        
-        # Check for response time patterns
-        response_time_anomalies = self._analyze_response_time_patterns(endpoint_id, metrics)
-        anomalies.extend(response_time_anomalies)
-        
-        # Check for error patterns
-        error_anomalies = self._analyze_error_patterns(endpoint_id, metrics)
-        anomalies.extend(error_anomalies)
-        
-        return anomalies
-    
-    def _analyze_response_time_patterns(self, endpoint_id: str, metrics: List[ApiMetrics]) -> List[Anomaly]:
-        """
-        Analyze response time patterns.
-        
-        Args:
-            endpoint_id: The endpoint ID.
-            metrics: List of metrics for the endpoint.
+        try:
+            # Sort metrics by timestamp
+            metrics.sort(key=lambda x: x.timestamp)
             
-        Returns:
-            List of response time anomalies detected.
-        """
-        anomalies = []
-        
-        # Extract response times (skip None values)
-        response_times = [m.response_time for m in metrics if m.response_time is not None]
-        
-        if not response_times or len(response_times) < 5:
-            # Not enough data for pattern analysis
+            # Analyze response time patterns
+            response_time_anomalies = self._analyze_response_time_patterns(endpoint_id, metrics)
+            anomalies.extend(response_time_anomalies)
+            
+            # Analyze error patterns
+            error_anomalies = self._analyze_error_patterns(endpoint_id, metrics)
+            anomalies.extend(error_anomalies)
+            
+            return anomalies
+            
+        except Exception as e:
+            logger.error(f"Error analyzing endpoint patterns: {str(e)}")
             return []
+    
+    def _analyze_response_time_patterns(self, endpoint_id: str, metrics: List[ApiMetric]) -> List[Anomaly]:
+        """Analyze response time patterns to detect anomalies."""
+        anomalies = []
         
-        # Calculate statistics
-        mean_rt = np.mean(response_times)
-        std_rt = np.std(response_times)
-        
-        # Check for recent outliers (last 3 values)
-        for i, metric in enumerate(metrics[-3:]):
-            if metric.response_time is None:
-                continue
+        try:
+            # Extract response times
+            response_times = [metric.response_time for metric in metrics]
             
-            # Check if response time is an outlier (>3 standard deviations)
-            if std_rt > 0 and abs(metric.response_time - mean_rt) > 3 * std_rt:
-                # Create anomaly
-                anomaly = Anomaly(
-                    api_id=self.api_source.id,
-                    type="response_time_outlier",
-                    severity=min(0.9, abs(metric.response_time - mean_rt) / (4 * std_rt)),
-                    timestamp=datetime.utcnow(),
-                    description=f"Response time outlier detected for endpoint {endpoint_id}",
-                    metric_value=metric.response_time,
-                    expected_value=mean_rt,
-                    threshold=mean_rt + 3 * std_rt,
-                    environment=self.api_source.environment,
-                    context={
-                        "endpoint_id": endpoint_id,
-                        "standard_deviation": std_rt,
-                        "z_score": (metric.response_time - mean_rt) / std_rt,
-                        "metric_id": metric.id
-                    }
-                )
-                anomalies.append(anomaly)
-        
-        # Check for trends (increasing or decreasing pattern)
-        if len(response_times) >= 10:
-            # Use simple linear regression to detect trend
-            x = np.arange(len(response_times))
-            y = np.array(response_times)
+            if len(response_times) < 20:  # Need enough samples for analysis
+                return anomalies
             
-            # Calculate slope
-            slope = np.polyfit(x, y, 1)[0]
+            # Convert to numpy array for analysis
+            X = np.array(response_times).reshape(-1, 1)
             
-            # Normalize slope to make it comparable
-            normalized_slope = slope * len(response_times) / mean_rt if mean_rt > 0 else 0
+            # Fit and predict with Isolation Forest
+            self.isolation_forest.fit(X)
+            predictions = self.isolation_forest.predict(X)
             
-            # Check if there's a significant trend
-            if abs(normalized_slope) > 0.5:  # Threshold for trend detection
-                trend_type = "increasing" if normalized_slope > 0 else "decreasing"
-                
-                # Only report increasing trends as anomalies (decreasing is good)
-                if trend_type == "increasing":
+            # Find anomalies
+            for i, (metric, prediction) in enumerate(zip(metrics, predictions)):
+                if prediction == -1:  # Anomaly detected
                     anomaly = Anomaly(
-                        api_id=self.api_source.id,
-                        type="response_time_trend",
-                        severity=min(0.8, abs(normalized_slope) / 2),
-                        timestamp=datetime.utcnow(),
-                        description=f"{trend_type.capitalize()} response time trend detected for endpoint {endpoint_id}",
-                        metric_value=normalized_slope,
-                        expected_value=0,
-                        threshold=0.5,
-                        environment=self.api_source.environment,
+                        id=f"pattern-{metric.timestamp.timestamp()}",
+                        api_id=metric.api_id,
+                        type="response_time_pattern",
+                        severity=0.8,  # High severity for pattern anomalies
+                        description=f"Response time pattern anomaly detected for {endpoint_id}",
+                        timestamp=metric.timestamp,
+                        metric_value=metric.response_time,
+                        expected_value=np.mean(response_times),
+                        threshold=np.std(response_times) * 2,
+                        environment=metric.environment,
                         context={
-                            "endpoint_id": endpoint_id,
-                            "trend_type": trend_type,
-                            "slope": slope,
-                            "data_points": len(response_times)
+                            "endpoint": endpoint_id,
+                            "response_times": response_times[i-5:i+5] if i > 5 else response_times[:i+5]
                         }
                     )
                     anomalies.append(anomaly)
-        
-        return anomalies
-    
-    def _analyze_error_patterns(self, endpoint_id: str, metrics: List[ApiMetrics]) -> List[Anomaly]:
-        """
-        Analyze error patterns.
-        
-        Args:
-            endpoint_id: The endpoint ID.
-            metrics: List of metrics for the endpoint.
             
-        Returns:
-            List of error anomalies detected.
-        """
+            return anomalies
+            
+        except Exception as e:
+            logger.error(f"Error analyzing response time patterns: {str(e)}")
+            return []
+    
+    def _analyze_error_patterns(self, endpoint_id: str, metrics: List[ApiMetric]) -> List[Anomaly]:
+        """Analyze error patterns to detect anomalies."""
         anomalies = []
         
-        if len(metrics) < 5:
-            # Not enough data for pattern analysis
-            return []
-        
-        # Count failures in recent metrics (last 10 or fewer)
-        recent_metrics = metrics[-min(10, len(metrics)):]
-        failure_count = sum(1 for m in recent_metrics if not m.success)
-        error_rate = failure_count / len(recent_metrics)
-        
-        # Check if error rate is unusually high (>20%)
-        if error_rate > 0.2:
-            anomaly = Anomaly(
-                api_id=self.api_source.id,
-                type="error_rate",
-                severity=min(0.95, error_rate * 1.5),  # Higher severity for higher error rates
-                timestamp=datetime.utcnow(),
-                description=f"High error rate detected for endpoint {endpoint_id}",
-                metric_value=error_rate,
-                expected_value=0.05,  # Expect low error rate
-                threshold=0.2,
-                environment=self.api_source.environment,
-                context={
-                    "endpoint_id": endpoint_id,
-                    "failure_count": failure_count,
-                    "total_count": len(recent_metrics),
-                    "recent_error_messages": [m.error_message for m in recent_metrics if not m.success and m.error_message]
-                }
-            )
-            anomalies.append(anomaly)
-        
-        # Check for repeated same errors
-        error_messages = {}
-        for metric in recent_metrics:
-            if not metric.success and metric.error_message:
-                if metric.error_message not in error_messages:
-                    error_messages[metric.error_message] = 0
-                error_messages[metric.error_message] += 1
-        
-        # If the same error appears multiple times
-        for error_msg, count in error_messages.items():
-            if count >= 3:  # Multiple occurrences of the same error
-                error_rate = count / len(recent_metrics)
-                anomaly = Anomaly(
-                    api_id=self.api_source.id,
-                    type="repeated_error",
-                    severity=min(0.9, count / len(recent_metrics) * 2),
-                    timestamp=datetime.utcnow(),
-                    description=f"Repeated error detected for endpoint {endpoint_id}",
-                    metric_value=count,
-                    expected_value=1,
-                    threshold=3,
-                    environment=self.api_source.environment,
-                    context={
-                        "endpoint_id": endpoint_id,
-                        "error_message": error_msg,
-                        "occurrences": count,
-                        "total_metrics": len(recent_metrics)
-                    }
-                )
-                anomalies.append(anomaly)
-        
-        return anomalies 
+        try:
+            # Calculate error rate over time windows
+            window_size = timedelta(minutes=5)
+            error_counts = {}
+            
+            for metric in metrics:
+                window_start = metric.timestamp - (metric.timestamp % window_size)
+                if window_start not in error_counts:
+                    error_counts[window_start] = {"total": 0, "errors": 0}
+                error_counts[window_start]["total"] += 1
+                if not metric.success:
+                    error_counts[window_start]["errors"] += 1
+            
+            # Analyze error rates
+            for window_start, counts in error_counts.items():
+                error_rate = counts["errors"] / counts["total"]
+                if error_rate > 0.1:  # More than 10% errors
+                    anomaly = Anomaly(
+                        id=f"error-{window_start.timestamp()}",
+                        api_id=metrics[0].api_id,  # Use first metric's API ID
+                        type="error_rate_pattern",
+                        severity=0.9,  # Very high severity for error patterns
+                        description=f"High error rate detected for {endpoint_id}",
+                        timestamp=window_start,
+                        metric_value=error_rate,
+                        expected_value=0.05,  # Expected 5% error rate
+                        threshold=0.1,  # 10% threshold
+                        environment=metrics[0].environment,
+                        context={
+                            "endpoint": endpoint_id,
+                            "total_requests": counts["total"],
+                            "error_count": counts["errors"]
+                        }
+                    )
+                    anomalies.append(anomaly)
+            
+            return anomalies
+            
+        except Exception as e:
+            logger.error(f"Error analyzing error patterns: {str(e)}")
+            return [] 

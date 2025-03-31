@@ -15,15 +15,19 @@ class Settings:
         self.HOST = os.getenv("HOST", "0.0.0.0")
         self.PORT = int(os.getenv("PORT", "8000"))
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+        self.CLOUD_DEPLOYMENT = os.getenv("CLOUD_DEPLOYMENT", "False").lower() in ("true", "1", "t")
         
         # CORS settings
         self.CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
         
         # Database settings
         self.MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/api_monitoring")
-        self.ELASTICSEARCH_HOSTS = os.getenv("ELASTICSEARCH_HOSTS", "http://localhost:9200").split(",")
+        self.ELASTICSEARCH_HOSTS = os.getenv("ELASTICSEARCH_HOSTS", "https://aa1685245a834737a1ce1a2e4eae7f50.us-east-2.aws.elastic-cloud.com:443").split(",")
         self.ELASTICSEARCH_USERNAME = os.getenv("ELASTICSEARCH_USERNAME", None)
         self.ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD", None)
+        self.ELASTICSEARCH_CLOUD_ID = os.getenv("ELASTICSEARCH_CLOUD_ID", None)
+        self.ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY", None)
+        self.KIBANA_URL = os.getenv("KIBANA_URL", None)
         
         # Data collection settings
         self.COLLECTION_INTERVAL = int(os.getenv("COLLECTION_INTERVAL", "60"))  # seconds

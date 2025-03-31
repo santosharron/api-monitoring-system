@@ -5,6 +5,7 @@ import asyncio
 import logging
 import sys
 import signal
+import os
 from typing import List, Dict, Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,6 +57,9 @@ analyzer_manager = None
 alert_manager = None
 dashboard_initializer = None
 
+# Flag to control Kibana dashboard initialization
+SKIP_KIBANA_INIT = os.getenv("SKIP_KIBANA_INIT", "False").lower() in ("true", "1", "t")
+
 @app.on_event("startup")
 async def startup_event():
     """
@@ -70,11 +74,18 @@ async def startup_event():
         db = get_database()
         await db.connect()
         
+        # Update existing metrics with missing IDs
+        try:
+            updated_count = await db.update_api_metrics_with_missing_id()
+            if updated_count > 0:
+                logger.info(f"Updated {updated_count} API metrics with missing ID field")
+        except Exception as e:
+            logger.error(f"Error updating API metrics with missing IDs: {str(e)}")
+        
         # Initialize components
         collector_manager = CollectorManager()
         analyzer_manager = AnalyzerManager()
         alert_manager = AlertManager()
-        dashboard_initializer = DashboardInitializer()
         
         # Start components with error handling
         try:
@@ -91,12 +102,17 @@ async def startup_event():
             await alert_manager.start_alerting()
         except Exception as e:
             logger.error(f"Error starting alert manager: {str(e)}")
-            
-        # Initialize Kibana dashboards
-        try:
-            await dashboard_initializer.initialize_dashboards()
-        except Exception as e:
-            logger.error(f"Error initializing Kibana dashboards: {str(e)}")
+        
+        # Initialize Kibana dashboards (only if not skipped)
+        if not SKIP_KIBANA_INIT:
+            dashboard_initializer = DashboardInitializer()
+            try:
+                # Run Kibana initialization in a separate task to not block startup
+                asyncio.create_task(initialize_kibana_dashboards())
+            except Exception as e:
+                logger.error(f"Error initializing Kibana dashboards: {str(e)}")
+        else:
+            logger.info("Skipping Kibana dashboard initialization")
         
         logger.info("API Monitoring System started successfully")
         
@@ -108,6 +124,21 @@ async def startup_event():
         logger.error(f"Error starting API Monitoring System: {str(e)}")
         # Log the error but allow the application to start
         # This enables the API to work even if some components aren't fully functional
+
+async def initialize_kibana_dashboards():
+    """
+    Initialize Kibana dashboards asynchronously.
+    """
+    global dashboard_initializer
+    
+    try:
+        if dashboard_initializer:
+            logger.info("Initializing Kibana dashboards in background task...")
+            await dashboard_initializer.initialize_dashboards()
+            logger.info("Kibana dashboards initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing Kibana dashboards: {str(e)}")
+        # Don't let dashboard init failures affect main app
 
 @app.on_event("shutdown")
 async def shutdown_event():

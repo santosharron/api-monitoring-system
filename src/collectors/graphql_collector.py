@@ -1,50 +1,40 @@
 """
-GraphQL API collector for API monitoring system.
+GraphQL API metrics collector.
 """
-import asyncio
 import logging
-import time
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-
+import asyncio
 import aiohttp
+from typing import List, Any, Optional
+from datetime import datetime
 
-from config.settings import settings
-from src.models.api import ApiSource, ApiMetrics, Environment
+from src.models.api import ApiSource, ApiMetric, Environment
+from src.collectors.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
 
-class GraphQLCollector:
+class GraphqlCollector(BaseCollector):
     """
-    Collector for GraphQL API metrics.
+    Collector for GraphQL APIs.
     """
     def __init__(self, api_source: ApiSource):
         """
         Initialize the GraphQL collector.
         
         Args:
-            api_source: The API source to collect metrics for.
+            api_source: The API source configuration.
         """
-        self.api_source = api_source
-        self.headers = self._prepare_headers(api_source)
+        super().__init__(api_source)
+        self.session = None
         self.last_collection = None
         self.metrics_count = 0
-        self._running = False
     
     async def initialize(self):
         """
         Initialize the collector.
         """
-        self._running = True
-        self.last_collection = None
-        self.metrics_count = 0
-    
-    async def stop(self):
-        """
-        Stop the collector.
-        """
-        self._running = False
+        # Create a session for GraphQL API requests
+        await self._ensure_session()
+        logger.debug(f"Initialized GraphQL collector for {self.api_source.name}")
     
     def is_running(self) -> bool:
         """
@@ -53,155 +43,103 @@ class GraphQLCollector:
         Returns:
             True if the collector is running, False otherwise.
         """
-        return self._running
+        return self.enabled
     
-    def _prepare_headers(self, api_source: ApiSource) -> Dict[str, str]:
+    async def stop(self):
         """
-        Prepare headers for GraphQL requests.
-        
-        Args:
-            api_source: The API source.
-            
-        Returns:
-            Dictionary of headers.
+        Stop the collector.
         """
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
-        
-        # Add authentication if configured
-        if api_source.auth_type == "bearer":
-            headers["Authorization"] = f"Bearer {api_source.auth_token}"
-        elif api_source.auth_type == "api_key":
-            # Add API key to headers or as query parameter
-            if api_source.auth_header:
-                headers[api_source.auth_header] = api_source.auth_token
-        
-        # Add custom headers if any
-        if api_source.headers:
-            headers.update(api_source.headers)
-        
-        return headers
+        if self.session and not self.session.closed:
+            await self.session.close()
+            self.session = None
+        logger.debug(f"Stopped GraphQL collector for {self.api_source.name}")
     
-    async def collect_metrics(self) -> List[ApiMetrics]:
+    async def _ensure_session(self):
+        """
+        Ensure that an HTTP session exists.
+        """
+        if self.session is None or self.session.closed:
+            timeout = aiohttp.ClientTimeout(total=30)  # Default timeout of 30 seconds
+            self.session = aiohttp.ClientSession(timeout=timeout)
+    
+    async def collect_metrics(self) -> List[ApiMetric]:
         """
         Collect metrics from the GraphQL API.
         
         Returns:
             List of API metrics.
         """
-        if not self._running:
-            logger.warning(f"Collector for API {self.api_source.id} is not running")
-            return []
-        
         metrics = []
         
-        # Update last collection time
-        self.last_collection = datetime.utcnow()
-        
-        # Collect metrics for each endpoint/operation
-        for operation in self.api_source.endpoints:
-            try:
-                operation_metrics = await self._collect_operation_metrics(operation)
-                if operation_metrics:
-                    metrics.append(operation_metrics)
-            except Exception as e:
-                logger.error(f"Error collecting metrics for operation {operation.name}: {str(e)}")
-        
-        # Update metrics count
-        self.metrics_count += len(metrics)
-        
-        return metrics
-    
-    async def _collect_operation_metrics(self, operation: Any) -> Optional[ApiMetrics]:
-        """
-        Collect metrics for a specific GraphQL operation.
-        
-        Args:
-            operation: The GraphQL operation.
-            
-        Returns:
-            API metrics for the operation.
-        """
         try:
-            # Create GraphQL request
-            query = operation.query
-            variables = operation.variables or {}
-            
-            payload = {
-                "query": query,
-                "variables": variables
-            }
-            
-            # Record start time
-            start_time = time.time()
-            
-            # Send request to GraphQL API
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_source.base_url,
-                    json=payload,
-                    headers=self.headers,
-                    timeout=self.api_source.timeout or 10
-                ) as response:
-                    # Record end time
-                    end_time = time.time()
-                    response_time = (end_time - start_time) * 1000  # convert to ms
-                    
-                    # Get response
-                    status_code = response.status
-                    response_body = await response.text()
-                    response_size = len(response_body)
-                    
-                    # Create metrics object
-                    metrics = ApiMetrics(
-                        id=str(uuid.uuid4()),
-                        api_id=self.api_source.id,
-                        endpoint_id=operation.id,
-                        environment=self.api_source.environment,
-                        timestamp=datetime.utcnow(),
-                        response_time=response_time,
-                        status_code=status_code,
-                        response_size=response_size,
-                        success=(status_code >= 200 and status_code < 300 and "errors" not in response_body),
-                        error_message=None if status_code < 400 else f"HTTP Error: {status_code}",
-                        tags=self.api_source.tags,
-                        metadata={
-                            "operation_name": operation.name,
-                            "operation_type": operation.type,
-                            "variables_count": len(variables) if variables else 0
-                        }
-                    )
-                    
-                    return metrics
-                    
-        except aiohttp.ClientError as e:
-            # Handle connection errors
-            logger.error(f"Connection error for GraphQL operation {operation.name}: {str(e)}")
-            
-            # Create error metrics
-            metrics = ApiMetrics(
-                id=str(uuid.uuid4()),
-                api_id=self.api_source.id,
-                endpoint_id=operation.id,
-                environment=self.api_source.environment,
-                timestamp=datetime.utcnow(),
-                response_time=None,
-                status_code=None,
-                response_size=None,
-                success=False,
-                error_message=f"Connection error: {str(e)}",
-                tags=self.api_source.tags,
-                metadata={
-                    "operation_name": operation.name,
-                    "operation_type": operation.type,
-                    "error_type": "connection_error"
-                }
-            )
+            # Collect metrics for each operation
+            for operation in self.api_source.endpoints:
+                operation_metric = await self._collect_operation_metrics(operation)
+                if operation_metric:
+                    metrics.append(operation_metric)
             
             return metrics
             
         except Exception as e:
-            logger.error(f"Error collecting metrics for GraphQL operation {operation.name}: {str(e)}")
-            return None 
+            logger.error(f"Error collecting GraphQL metrics: {str(e)}")
+            return []
+    
+    async def _collect_operation_metrics(self, operation: Any) -> Optional[ApiMetric]:
+        """Collect metrics for a specific GraphQL operation."""
+        try:
+            # Prepare GraphQL query
+            query = self._prepare_query(operation)
+            
+            # Make GraphQL request
+            start_time = datetime.utcnow()
+            
+            async with self.session.post(
+                self.api_source.base_url,
+                json={"query": query},
+                headers=self.api_source.headers
+            ) as response:
+                end_time = datetime.utcnow()
+                response_time = (end_time - start_time).total_seconds() * 1000
+                
+                # Parse response
+                data = await response.json()
+                
+                # Check for errors
+                errors = data.get("errors", [])
+                success = not bool(errors)
+                
+                # Create metric
+                metric = ApiMetric(
+                    id=f"graphql-{start_time.timestamp()}",
+                    api_id=self.api_source.id,
+                    endpoint=operation.path,
+                    method=operation.method,
+                    response_time=response_time,
+                    status_code=response.status,
+                    success=success,
+                    error_message=str(errors[0]) if errors else None,
+                    environment=self.api_source.environment,
+                    timestamp=start_time,
+                    error=not success
+                )
+                
+                return metric
+                
+        except Exception as e:
+            logger.error(f"Error collecting operation metrics: {str(e)}")
+            return None
+    
+    def _prepare_query(self, operation: Any) -> str:
+        """Prepare GraphQL query for the operation."""
+        # This is a placeholder. In a real implementation,
+        # you would generate appropriate GraphQL queries
+        # based on the operation type and parameters
+        return """
+        query {
+            __schema {
+                types {
+                    name
+                }
+            }
+        }
+        """ 

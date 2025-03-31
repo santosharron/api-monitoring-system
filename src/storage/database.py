@@ -3,6 +3,7 @@ Database access layer for API monitoring system.
 """
 import logging
 import asyncio
+import os
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -11,7 +12,7 @@ import pymongo
 import json
 
 from config.settings import Settings
-from src.models.api import ApiSource, ApiMetric, Anomaly, Prediction, Alert, Environment, ApiMetrics
+from src.models.api import ApiSource, ApiMetric, Anomaly, Prediction, Alert, Environment
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +43,31 @@ class Database:
         try:
             # Connect to MongoDB
             try:
-                self.mongo_client = AsyncIOMotorClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
+                # Get MongoDB URI directly from environment if available, otherwise use settings
+                mongodb_uri = os.environ.get("MONGODB_URI") or settings.MONGODB_URI
+                
+                # Debug log for MongoDB connection
+                logger.info(f"Connecting to MongoDB with URI: {mongodb_uri[:20]}...{mongodb_uri[-20:] if len(mongodb_uri) > 40 else ''}")
+                
+                # Configure more explicit timeout parameters
+                connection_params = {
+                    "serverSelectionTimeoutMS": 30000,  # Increase from 5000 to 30000
+                    "connectTimeoutMS": 30000,
+                    "socketTimeoutMS": 30000,
+                    "maxIdleTimeMS": 45000,
+                }
+                
+                self.mongo_client = AsyncIOMotorClient(
+                    mongodb_uri, 
+                    **connection_params
+                )
+                
                 # Test connection
+                logger.info("Testing MongoDB connection...")
                 await self.mongo_client.admin.command('ping')
                 self.mongo_db = self.mongo_client.get_database()
                 self.mongo_available = True
-                logger.info("MongoDB connection established")
+                logger.info(f"MongoDB connection established to database: {self.mongo_db.name}")
                 
                 # Setup MongoDB indexes if available
                 if self.mongo_available:
@@ -59,16 +79,41 @@ class Database:
             # Connect to Elasticsearch
             try:
                 es_kwargs = {}
-                if settings.ELASTICSEARCH_USERNAME and settings.ELASTICSEARCH_PASSWORD:
-                    es_kwargs['basic_auth'] = (settings.ELASTICSEARCH_USERNAME, settings.ELASTICSEARCH_PASSWORD)
+                if settings.ELASTICSEARCH_CLOUD_ID:
+                    logger.info(f"Using Elasticsearch Cloud ID: {settings.ELASTICSEARCH_CLOUD_ID[:10]}...")
+                    es_kwargs['cloud_id'] = settings.ELASTICSEARCH_CLOUD_ID
+                    # When using Cloud ID, we don't need to specify hosts
+                    hosts = None
+                else:
+                    hosts = settings.ELASTICSEARCH_HOSTS
+                    logger.info(f"Using Elasticsearch hosts: {hosts}")
                 
-                self.es_client = AsyncElasticsearch(
-                    settings.ELASTICSEARCH_HOSTS,
-                    request_timeout=5,  # 5 second timeout
-                    **es_kwargs
-                )
+                if settings.ELASTICSEARCH_API_KEY:
+                    logger.info("Using Elasticsearch API key authentication")
+                    es_kwargs['api_key'] = settings.ELASTICSEARCH_API_KEY
+                elif settings.ELASTICSEARCH_USERNAME and settings.ELASTICSEARCH_PASSWORD:
+                    logger.info(f"Using Elasticsearch basic auth with username: {settings.ELASTICSEARCH_USERNAME}")
+                    es_kwargs['basic_auth'] = (settings.ELASTICSEARCH_USERNAME, settings.ELASTICSEARCH_PASSWORD)
+                else:
+                    # Hardcoded credentials for testing
+                    logger.info("Using hardcoded Elasticsearch basic auth credentials")
+                    es_kwargs['basic_auth'] = ("elastic", "KIuc03ZYAf6IqGkE1zEap1DR")
+                
+                # Only pass hosts if we're not using cloud_id
+                if 'cloud_id' in es_kwargs:
+                    self.es_client = AsyncElasticsearch(
+                        request_timeout=10,  # Increase timeout to 10 seconds
+                        **es_kwargs
+                    )
+                else:
+                    self.es_client = AsyncElasticsearch(
+                        hosts,
+                        request_timeout=10,  # Increase timeout to 10 seconds
+                        **es_kwargs
+                    )
                 
                 # Test connection
+                logger.info("Testing Elasticsearch connection...")
                 await self.es_client.info()
                 self.es_available = True
                 logger.info("Elasticsearch connection established")
@@ -110,45 +155,45 @@ class Database:
         logger.info("Database connections closed")
     
     async def _setup_elasticsearch_indices(self):
-        """
-        Set up Elasticsearch indices and mappings.
-        """
-        if not self.es_available or not self.es_client:
-            return
-            
+        """Set up required Elasticsearch indices."""
         try:
-            # Define metrics index
-            metrics_index = "api_metrics"
-            metrics_mapping = {
-                "mappings": {
-                    "properties": {
-                        "api_id": {"type": "keyword"},
-                        "timestamp": {"type": "date"},
-                        "response_time": {"type": "float"},
-                        "status_code": {"type": "integer"},
-                        "error": {"type": "boolean"},
-                        "error_message": {"type": "text"},
-                        "endpoint": {"type": "keyword"},
-                        "method": {"type": "keyword"},
-                        "environment": {"type": "keyword"},
-                        "request_id": {"type": "keyword"},
-                        "trace_id": {"type": "keyword"},
-                        "span_id": {"type": "keyword"},
-                        "payload_size": {"type": "integer"},
-                        "response_size": {"type": "integer"},
-                        "metadata": {"type": "object", "enabled": True}
+            # Create indices with serverless-compatible settings
+            indices = {
+                'api_metrics': {
+                    'mappings': {
+                        'properties': {
+                            'id': {'type': 'keyword'},
+                            'timestamp': {'type': 'date'},
+                            'api_id': {'type': 'keyword'},
+                            'response_time': {'type': 'float'},
+                            'status_code': {'type': 'integer'},
+                            'success': {'type': 'boolean'},
+                            'error_message': {'type': 'text'},
+                            'environment': {'type': 'keyword'},
+                            'endpoint': {'type': 'keyword'},
+                            'method': {'type': 'keyword'}
+                        }
                     }
                 },
-                "settings": {
-                    "number_of_shards": 3,
-                    "number_of_replicas": 1
+                'anomalies': {
+                    'mappings': {
+                        'properties': {
+                            'timestamp': {'type': 'date'},
+                            'api_id': {'type': 'keyword'},
+                            'type': {'type': 'keyword'},
+                            'severity': {'type': 'float'},
+                            'description': {'type': 'text'},
+                            'environment': {'type': 'keyword'},
+                            'context': {'type': 'object'}
+                        }
+                    }
                 }
             }
             
-            # Create indices if they don't exist
-            if not await self.es_client.indices.exists(index=metrics_index):
-                await self.es_client.indices.create(index=metrics_index, body=metrics_mapping)
-                logger.info(f"Created Elasticsearch index: {metrics_index}")
+            for index_name, settings in indices.items():
+                if not await self.es_client.indices.exists(index=index_name):
+                    await self.es_client.indices.create(index=index_name, body=settings)
+                    logger.info(f"Created Elasticsearch index: {index_name}")
         except Exception as e:
             logger.warning(f"Error setting up Elasticsearch indices: {str(e)}")
             self.es_available = False
@@ -254,7 +299,7 @@ class Database:
         # Build query
         query = {}
         if active is not None:
-            query["active"] = active
+            query["is_active"] = active
         if updated_since:
             query["updated_at"] = {"$gte": updated_since}
         
@@ -335,7 +380,7 @@ class Database:
     
     # Metrics methods
     
-    async def store_metrics(self, metrics: Union[List[ApiMetric], List[ApiMetrics]]) -> int:
+    async def store_metrics(self, metrics: List[ApiMetric]) -> int:
         """
         Store API metrics in the database.
         
@@ -348,34 +393,57 @@ class Database:
         await self._ensure_connection()
         
         if not metrics:
-            return 0
-            
-        if not self.es_available:
-            logger.warning("Cannot store metrics: Elasticsearch not available")
+            logger.debug("No metrics to store")
             return 0
         
-        # Prepare bulk operation
-        operations = []
+        stored_count = 0
         
-        for metric in metrics:
-            # Convert Pydantic model to dict
-            metric_dict = metric.dict()
+        try:
+            # Convert Pydantic models to dicts
+            metric_dicts = [metric.dict() for metric in metrics]
             
-            # Elasticsearch bulk operation
-            operations.append({"index": {"_index": "api_metrics"}})
-            operations.append(metric_dict)
-        
-        if operations:
-            try:
-                # Execute bulk operation
-                response = await self.es_client.bulk(operations=operations, refresh=True)
-                logger.debug(f"Stored {len(metrics)} metrics in Elasticsearch")
-                return len(metrics)
-            except Exception as e:
-                logger.error(f"Error storing metrics in Elasticsearch: {str(e)}")
-                return 0
-        
-        return 0
+            # Store in MongoDB if available
+            if self.mongo_available:
+                try:
+                    result = await self.mongo_db.api_metrics.insert_many(metric_dicts)
+                    stored_count = len(result.inserted_ids)
+                    logger.debug(f"Stored {stored_count} metrics in MongoDB")
+                except Exception as mongo_err:
+                    logger.warning(f"Error storing metrics in MongoDB: {str(mongo_err)}. Continuing with Elasticsearch.")
+            
+            # Store in Elasticsearch if available
+            if self.es_available:
+                try:
+                    bulk_operations = []
+                    for metric in metrics:
+                        # First line is the action/metadata
+                        bulk_operations.append({"index": {"_index": "api_metrics"}})
+                        # Second line is the document data
+                        bulk_operations.append({
+                            'id': metric.id,
+                            'timestamp': metric.timestamp.isoformat(),
+                            'api_id': metric.api_id,
+                            'response_time': metric.response_time,
+                            'status_code': metric.status_code,
+                            'success': metric.success,
+                            'error_message': metric.error_message,
+                            'environment': metric.environment.value if hasattr(metric.environment, 'value') else metric.environment,
+                            'endpoint': metric.endpoint,
+                            'method': metric.method
+                        })
+                    
+                    if bulk_operations:
+                        await self.es_client.bulk(operations=bulk_operations)
+                        if not self.mongo_available:
+                            stored_count = len(metrics)
+                        logger.debug(f"Stored {len(metrics)} metrics in Elasticsearch")
+                except Exception as es_err:
+                    logger.warning(f"Error storing metrics in Elasticsearch: {str(es_err)}")
+            
+            return stored_count
+        except Exception as e:
+            logger.error(f"Error storing metrics: {str(e)}")
+            return 0
     
     async def get_metrics(
         self,
@@ -459,6 +527,11 @@ class Database:
                     except ValueError:
                         # Default to OTHER if environment is invalid
                         source["environment"] = Environment.OTHER
+                
+                # Generate ID if missing
+                if "id" not in source:
+                    from uuid import uuid4
+                    source["id"] = str(uuid4())
                 
                 metrics.append(ApiMetric(**source))
             
@@ -964,12 +1037,174 @@ class Database:
         
         return result.modified_count > 0
     
+    async def store_anomaly(self, anomaly: Anomaly) -> str:
+        """
+        Store an anomaly in the database.
+        
+        Args:
+            anomaly: The anomaly to store.
+            
+        Returns:
+            The ID of the stored anomaly.
+        """
+        await self._ensure_connection()
+        
+        if not self.mongo_available:
+            logger.warning("Cannot store anomaly: MongoDB not available")
+            return anomaly.id
+        
+        # Convert Pydantic model to dict
+        anomaly_dict = anomaly.dict()
+        
+        # Generate ID if not provided
+        if not anomaly_dict.get("id"):
+            from uuid import uuid4
+            anomaly_dict["id"] = str(uuid4())
+        
+        # Store in MongoDB
+        await self.mongo_db.anomalies.update_one(
+            {"id": anomaly_dict["id"]},
+            {"$set": anomaly_dict},
+            upsert=True
+        )
+        
+        # Store in Elasticsearch if available
+        if self.es_available:
+            try:
+                await self.es_client.index(
+                    index="anomalies",
+                    id=anomaly_dict["id"],
+                    document=anomaly_dict
+                )
+            except Exception as e:
+                logger.warning(f"Failed to store anomaly in Elasticsearch: {str(e)}")
+        
+        logger.debug(f"Stored anomaly: {anomaly_dict['id']}")
+        return anomaly_dict["id"]
+    
+    async def store_alert(self, alert: Alert) -> str:
+        """
+        Store an alert in the database.
+        
+        Args:
+            alert: The alert to store.
+            
+        Returns:
+            The ID of the stored alert.
+        """
+        await self._ensure_connection()
+        
+        if not self.mongo_available:
+            logger.warning("Cannot store alert: MongoDB not available")
+            return alert.id
+        
+        # Convert Pydantic model to dict
+        alert_dict = alert.dict()
+        
+        # Generate ID if not provided
+        if not alert_dict.get("id"):
+            from uuid import uuid4
+            alert_dict["id"] = str(uuid4())
+        
+        # Store in MongoDB
+        await self.mongo_db.alerts.update_one(
+            {"id": alert_dict["id"]},
+            {"$set": alert_dict},
+            upsert=True
+        )
+        
+        logger.debug(f"Stored alert: {alert_dict['id']}")
+        return alert_dict["id"]
+    
+    async def store_prediction(self, prediction: Prediction) -> str:
+        """
+        Store a prediction in the database.
+        
+        Args:
+            prediction: The prediction to store.
+            
+        Returns:
+            The ID of the stored prediction.
+        """
+        await self._ensure_connection()
+        
+        if not self.mongo_available:
+            logger.warning("Cannot store prediction: MongoDB not available")
+            return prediction.id
+        
+        # Convert Pydantic model to dict
+        prediction_dict = prediction.dict()
+        
+        # Generate ID if not provided
+        if not prediction_dict.get("id"):
+            from uuid import uuid4
+            prediction_dict["id"] = str(uuid4())
+        
+        # Store in MongoDB
+        await self.mongo_db.predictions.update_one(
+            {"id": prediction_dict["id"]},
+            {"$set": prediction_dict},
+            upsert=True
+        )
+        
+        logger.debug(f"Stored prediction: {prediction_dict['id']}")
+        return prediction_dict["id"]
+    
     async def _ensure_connection(self):
         """
         Ensure that database connections are established.
         """
         if not self.initialized:
             await self.connect()
+            
+    async def update_api_metrics_with_missing_id(self):
+        """
+        Update existing API metrics in Elasticsearch that don't have an ID field.
+        This is a maintenance function to handle older records created before ID was added to schema.
+        """
+        await self._ensure_connection()
+        
+        if not self.es_available or not self.es_client:
+            logger.warning("Cannot update metrics: Elasticsearch not available")
+            return 0
+            
+        try:
+            # Search for all documents
+            response = await self.es_client.search(
+                index="api_metrics",
+                body={
+                    "query": {"match_all": {}},
+                    "size": 1000
+                }
+            )
+            
+            updated_count = 0
+            bulk_operations = []
+            
+            for hit in response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                source = hit["_source"]
+                
+                # If document doesn't have an ID field, add one
+                if "id" not in source:
+                    from uuid import uuid4
+                    source["id"] = str(uuid4())
+                    
+                    # Add update operations to bulk request
+                    bulk_operations.append({"update": {"_index": "api_metrics", "_id": doc_id}})
+                    bulk_operations.append({"doc": {"id": source["id"]}})
+                    updated_count += 1
+            
+            # Execute bulk update if there are operations
+            if bulk_operations:
+                await self.es_client.bulk(operations=bulk_operations)
+                logger.info(f"Updated {updated_count} API metrics with missing ID field")
+            
+            return updated_count
+            
+        except Exception as e:
+            logger.error(f"Error updating API metrics with missing ID: {str(e)}")
+            return 0
 
 # Singleton instance
 _db_instance = None

@@ -8,10 +8,10 @@ from datetime import datetime
 
 from config.settings import Settings
 from src.collectors.rest_collector import RestApiCollector
-from src.collectors.graphql_collector import GraphQLCollector
+from src.collectors.graphql_collector import GraphqlCollector
 from src.collectors.grpc_collector import GrpcCollector
 from src.storage.database import get_database
-from src.models.api import ApiSource, ApiMetrics, Environment
+from src.models.api import ApiSource, ApiMetric, Environment
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class CollectorManager:
         self.collectors = {}
         self.collector_classes = {
             'rest': RestApiCollector,
-            'graphql': GraphQLCollector,
+            'graphql': GraphqlCollector,
             'grpc': GrpcCollector
         }
     
@@ -221,10 +221,10 @@ class CollectorManager:
                     
                     # Process each updated source
                     for api_source in updated_sources:
-                        if not api_source.active and api_source.id in self.collectors:
+                        if not api_source.is_active and api_source.id in self.collectors:
                             # Remove collector for deactivated API
                             await self._remove_collector(api_source.id)
-                        elif api_source.active:
+                        elif api_source.is_active:
                             # Add or update collector for active API
                             if api_source.id in self.collectors:
                                 # Update existing collector
@@ -258,7 +258,7 @@ class CollectorManager:
             status["collectors"][api_id] = {
                 "type": collector.api_source.type,
                 "name": collector.api_source.name,
-                "active": collector.api_source.active,
+                "active": collector.api_source.is_active,
                 "status": "running" if collector.is_running() else "stopped",
                 "last_collection": collector.last_collection.isoformat() if collector.last_collection else None,
                 "metrics_collected": collector.metrics_count

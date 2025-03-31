@@ -7,6 +7,7 @@ import logging
 import random
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import uuid
 
 from src.models.api import ApiSource, ApiMetric, Environment
 
@@ -26,7 +27,7 @@ class BaseCollector(abc.ABC):
         self.api_source = api_source
         self.last_collection_time = 0
         self.collection_interval = 60  # Default collection interval in seconds
-        self.enabled = api_source.enabled
+        self.enabled = api_source.is_active
     
     def update_config(self, api_source: ApiSource):
         """
@@ -36,7 +37,7 @@ class BaseCollector(abc.ABC):
             api_source: The updated API source configuration.
         """
         self.api_source = api_source
-        self.enabled = api_source.enabled
+        self.enabled = api_source.is_active
     
     def should_collect(self) -> bool:
         """
@@ -110,6 +111,7 @@ class BaseCollector(abc.ABC):
         self.last_collection_time = time.time()
         
         return ApiMetric(
+            id=str(uuid.uuid4()),  # Generate a unique ID for the metric
             api_id=self.api_source.id,
             timestamp=datetime.utcnow(),
             response_time=response_time,
@@ -119,6 +121,7 @@ class BaseCollector(abc.ABC):
             endpoint=endpoint,
             method=method,
             environment=self.api_source.environment,
+            success=not error,  # Set success to the opposite of error
             request_id=request_id,
             trace_id=trace_id,
             span_id=span_id,
