@@ -1,0 +1,7 @@
+{
+  "name": "API Monitoring Slack",
+  "connector_type_id": ".slack",
+  "config": {
+    "webhookUrl": "https://hooks.slack.com/services/YOUR_WEBHOOK_URL"
+  }
+}

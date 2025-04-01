@@ -1,0 +1,28 @@
+{
+  "job_id": "api_error_rate_anomalies",
+  "description": "Monitors API error rates across environments",
+  "analysis_config": {
+    "bucket_span": "10m",
+    "detectors": [
+      {
+        "function": "high_non_zero_count",
+        "field_name": "error_count",
+        "by_field_name": "api_endpoint",
+        "partition_field_name": "environment"
+      },
+      {
+        "function": "time_of_day",
+        "field_name": "error_count"
+      }
+    ],
+    "influencers": [
+      "api_endpoint",
+      "environment",
+      "error_type",
+      "status_code"
+    ]
+  },
+  "data_description": {
+    "time_field": "@timestamp"
+  }
+}

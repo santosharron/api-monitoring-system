@@ -1,0 +1,18 @@
+{
+  "attributes": {
+    "title": "API Anomaly Detection",
+    "description": "Analysis of detected anomalies in API performance",
+    "hits": 0,
+    "timeRestore": true,
+    "timeFrom": "now-7d",
+    "timeTo": "now",
+    "refreshInterval": {
+      "pause": false,
+      "value": 300000
+    },
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"filter\":[]}"
+    },
+    "panelsJSON": "[{\"id\": \"response-time-anomalies-panel\", \"type\": \"visualization\", \"gridData\": {\"x\": 0, \"y\": 0, \"w\": 48, \"h\": 12, \"i\": \"1\"}, \"version\": \"7.10.0\", \"panelIndex\": \"1\"}, {\"id\": \"error-rate-anomalies-panel\", \"type\": \"visualization\", \"gridData\": {\"x\": 0, \"y\": 12, \"w\": 24, \"h\": 12, \"i\": \"2\"}, \"version\": \"7.10.0\", \"panelIndex\": \"2\"}, {\"id\": \"anomaly-severity-panel\", \"type\": \"visualization\", \"gridData\": {\"x\": 24, \"y\": 12, \"w\": 24, \"h\": 12, \"i\": \"3\"}, \"version\": \"7.10.0\", \"panelIndex\": \"3\"}]"
+  }
+}

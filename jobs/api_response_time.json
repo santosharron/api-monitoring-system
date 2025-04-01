@@ -1,0 +1,32 @@
+{
+  "job_id": "api_response_time_anomalies",
+  "description": "Detects anomalies in API response times across environments",
+  "analysis_config": {
+    "bucket_span": "15m",
+    "detectors": [
+      {
+        "function": "high_mean",
+        "field_name": "response_time_ms",
+        "over_field_name": "api_endpoint",
+        "partition_field_name": "environment"
+      },
+      {
+        "function": "spike_mean",
+        "field_name": "response_time_ms",
+        "over_field_name": "api_endpoint"
+      }
+    ],
+    "influencers": [
+      "api_endpoint",
+      "environment",
+      "service_name"
+    ]
+  },
+  "data_description": {
+    "time_field": "@timestamp"
+  },
+  "model_plot_config": {
+    "enabled": true,
+    "annotations_enabled": true
+  }
+}

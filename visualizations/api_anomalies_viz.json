@@ -1,0 +1,10 @@
+{
+  "attributes": {
+    "title": "API Anomalies Overview",
+    "visState": "{\"title\": \"API Anomalies Overview\", \"type\": \"metrics\", \"params\": {\"id\": \"61ca57f0-469d-11e7-af02-69e470af7417\", \"type\": \"timeseries\", \"series\": [{\"id\": \"anomaly-score\", \"color\": \"#68BC00\", \"split_mode\": \"terms\", \"metrics\": [{\"id\": \"1\", \"type\": \"max\", \"field\": \"anomaly_score\"}], \"seperate_axis\": 0, \"axis_position\": \"right\", \"formatter\": \"number\", \"chart_type\": \"line\", \"line_width\": 1, \"point_size\": 1, \"fill\": 0.5, \"stacked\": \"none\", \"terms_field\": \"api_id.keyword\", \"split_color_mode\": \"gradient\", \"label\": \"Anomaly Score\"}], \"time_field\": \"@timestamp\", \"index_pattern\": \"ml_anomalies*\", \"interval\": \"auto\", \"axis_position\": \"left\", \"axis_formatter\": \"number\", \"show_legend\": 1, \"show_grid\": 1}, \"aggs\": []}",
+    "uiStateJSON": "{}",
+    "description": "Shows anomaly scores for API monitoring",
+    "savedSearchId": "",
+    "version": 1
+  }
+}

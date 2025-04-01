@@ -1,0 +1,28 @@
+{
+  "name": "Error Rate Anomalies",
+  "tags": [
+    "api",
+    "monitoring",
+    "error_rate"
+  ],
+  "enabled": true,
+  "rule_type_id": "ml",
+  "consumer": "alerts",
+  "params": {
+    "machineLearningJob": "api_error_rate_anomalies",
+    "anomalyScoreThreshold": 75
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "actions": [
+    {
+      "group": "threshold_met",
+      "id": "7a1e306e-aa0e-4e35-8456-1a651263277c",
+      "params": {
+        "message": "High error rate detected for {{context.api_endpoint}} in {{context.environment}}. Score: {{context.anomaly_score}}"
+      }
+    }
+  ],
+  "notify_when": "onActionGroupChange"
+}

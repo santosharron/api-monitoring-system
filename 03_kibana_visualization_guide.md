@@ -1,90 +1,160 @@
 # API Monitoring Visualization Guide with Kibana
 
-## Accessing Kibana
+This guide will help you customize and extend the automatically generated dashboards in Kibana created by your API monitoring system.
 
-1. Navigate to Elastic Cloud dashboard at https://cloud.elastic.co
+## Accessing Your Dashboards
+
+Your application has already created several default dashboards:
+
+1. Navigate to Elastic Cloud dashboard: https://cloud.elastic.co
 2. Log in with your credentials
 3. Select your deployment (ai-agent-monitoring)
 4. Click on "Kibana" to open the Kibana interface
+5. Go to Dashboard → Open to see your existing dashboards:
+   - API Overview Dashboard
+   - Anomaly Detection Dashboard
+   - Cross-Environment Analysis Dashboard
 
-## Essential Visualizations
+## Enhancing the API Overview Dashboard
 
-### 1. API Response Time Dashboard
+This dashboard shows the general health of your APIs across environments. To enhance it:
 
-Create a dashboard with:
+1. Open the "API Overview" dashboard
+2. Click "Edit" in the top right
+3. Add these visualizations:
 
-- **Line Chart**: Average response time by API endpoint with anomaly detection bands
-- **Heat Map**: Response time distribution by hour/day
-- **Time Series**: 95th percentile response times across environments
-- **Anomaly Explorer**: Highlight unusual response time patterns
+### Response Time Distribution by Environment
 
-Steps:
-1. In Kibana, go to Dashboard → Create dashboard
-2. Add visualizations using + button
-3. For each visualization, select data source and appropriate metrics
-4. Save dashboard as "API Response Time Overview"
+1. Click "Create visualization"
+2. Select "Lens"
+3. From "api_metrics" index pattern:
+   - Add "environment" to breakdown
+   - Y-axis metric: Average of "response_time"
+   - Configure color range: Below 200ms (green), 200-500ms (yellow), Above 500ms (red)
+4. Save as "Response Time by Environment"
 
-### 2. Error Rate Monitoring
+### API Health Status Grid
 
-Create visualizations for:
+1. Create a new "Gauge" visualization
+2. Select "api_metrics" index pattern
+3. Configure:
+   - Metrics: "Average response_time" and "Max error_rate"
+   - Bucket: Split series by "api_id" and "environment"
+   - Set thresholds: Green (<200ms), Yellow (200-500ms), Red (>500ms)
+4. Save as "API Health Status Grid"
 
-- **Gauge**: Current error rate percentage with thresholds
-- **Bar Chart**: Error count by API endpoint
-- **Line Chart**: Error trend over time with anomaly markers
-- **Data Table**: Top error types with counts
+### Top Slowest Endpoints
 
-Steps:
-1. Use Lens or TSVB visualization tools
-2. Configure alerts for error rates exceeding thresholds
-3. Add environmental context to error visualizations
+1. Create a new "Data Table" visualization
+2. Configure:
+   - Metrics: "Average response_time" (descending sort)
+   - Bucket: Split rows by "endpoint" and "environment"
+   - Set size to 10 (top 10 slowest endpoints)
+3. Save as "Top Slowest Endpoints"
 
-### 3. Cross-Environment Performance
+## Customizing the Anomaly Detection Dashboard
 
-Create a dashboard showing:
+The anomaly detection dashboard shows detected anomalies. Enhance it with:
 
-- **Coordinate Map**: API performance by geographic region
-- **Vertical Bar Chart**: Comparison of same API across different environments
-- **Area Chart**: Traffic volume across environments
-- **Status Grid**: Health indicators for each environment
+### Anomaly Timeline
 
-### 4. Predictive Analytics View
+1. Create a new "Line" visualization
+2. Use "anomalies" index pattern
+3. Configure:
+   - X-axis: "timestamp" with date histogram
+   - Y-axis: Count of anomalies
+   - Split series by "anomaly_type" and "environment"
+4. Save as "Anomaly Timeline"
 
-Create visualizations for:
+### Severity Distribution Chart
 
-- **Forecasting Chart**: Predicted API load and response times
-- **ML Job Status**: View of anomaly detection job status
-- **Anomaly Timeline**: Chronological view of detected anomalies
-- **Impact Analysis**: Relationship mapping between failing APIs
+1. Create a "Pie Chart" visualization
+2. Configure:
+   - Metric: Count
+   - Bucket: Split slices by "severity" ranges
+   - Use ranges: Critical (>80), Major (60-80), Minor (40-60), Warning (<40)
+3. Save as "Anomaly Severity Distribution"
 
-## Setting Up Alerts
+### Anomaly Table with Context
+
+1. Create a new "Data Table" visualization
+2. Configure:
+   - Columns: timestamp, api_id, environment, type, severity, description
+   - Sort by: severity (descending)
+   - Add filter for high severity: severity > 50
+3. Save as "High Severity Anomalies"
+
+## Enhancing Cross-Environment Dashboard
+
+This dashboard correlates data across environments:
+
+### Environment Comparison Chart
+
+1. Create a new "Bar Chart" visualization
+2. Configure:
+   - X-axis: "environment"
+   - Y-axis: Average "response_time"
+   - Split series by "api_id"
+3. Save as "Environment Response Time Comparison"
+
+### Cross-Environment Request Flow
+
+1. Create a new "Vega" visualization 
+2. Use a Sankey diagram to show request flow between environments
+3. Configure data source to use "api_metrics" with aggregations by source and destination environments
+4. Save as "Cross-Environment Request Flow"
+
+## Setting Up Alerting
 
 1. Go to Stack Management → Rules and Connectors
-2. Create rules for:
-   - Response time exceeding thresholds
-   - Error rate anomalies
-   - Predictive failure warnings
-   - Cross-environment correlation issues
+2. Create new rule:
+   - Rule type: "Threshold"
+   - Index: "api_metrics"
+   - Condition: avg(response_time) > 500 OR max(error_rate) > 0.05
+   - Filter by: environment
+3. Configure actions:
+   - Slack notification
+   - Email alert
+   - Custom webhook to incident management system
 
-## Presenting to Stakeholders
+## Creating a Custom Executive Dashboard
 
-When demonstrating this system:
+Create a high-level dashboard for executives:
 
-1. Start with the high-level dashboard overview
-2. Show how anomaly detection works with real examples
-3. Demonstrate the cross-environment correlation capabilities
-4. Highlight the predictive capabilities and how they prevent outages
-5. Show the alerting system and response workflow
+1. Create a new dashboard named "Executive Overview"
+2. Add:
+   - "API Health Status" metric visualization
+   - "Response Time Trend" line chart
+   - "Error Rate by Environment" pie chart
+   - "Recent Anomalies" table
+   - "Predictive Health Forecast" visualization
 
-## Best Practices
+## Organizing Your Dashboards
 
-- Use consistent color coding across dashboards
-- Create role-based dashboards for different teams
-- Set appropriate time ranges for different visualizations
-- Include documentation within dashboards using markdown visualizations
-- Save and share URLs with specific filters applied for common scenarios
+Create a dashboard hierarchy:
 
-## Maintenance
+1. Go to Dashboard
+2. Use "Organize in spaces" feature
+3. Create spaces for:
+   - Operations: Technical dashboards with detailed metrics
+   - Management: High-level dashboards with business impact
+   - Alerting: Dashboards focused on active issues
 
-- Review dashboard usefulness quarterly
-- Update anomaly thresholds as system behavior evolves
-- Archive historical dashboards for comparison 
+## Sharing Dashboards
+
+To share dashboards with stakeholders:
+
+1. Open the dashboard you want to share
+2. Click "Share" in the top right
+3. Options:
+   - Generate short URL
+   - Embed in iframe (for internal portals)
+   - Export as PDF (for reports)
+   - Set up scheduled reports via "Reporting" feature
+
+## Dashboard Maintenance
+
+- Review dashboard performance quarterly
+- Update API endpoint list as new endpoints are added
+- Adjust anomaly thresholds based on operational experience
+- Archive historical dashboards as baseline changes 

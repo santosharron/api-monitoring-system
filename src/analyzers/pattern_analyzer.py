@@ -40,6 +40,32 @@ class PatternAnalyzer:
         self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
         self.lof = LocalOutlierFactor(n_neighbors=20, contamination=0.1)
     
+    async def detect_anomalies(self, metrics: List[ApiMetric]) -> List[Anomaly]:
+        """
+        Detect anomalies in API metrics.
+        
+        Args:
+            metrics: List of API metrics.
+            
+        Returns:
+            List of detected anomalies.
+        """
+        # This method is required by the analyzer manager and calls the analyze method
+        return await self.analyze(metrics)
+    
+    async def predict_issues(self, metrics: List[ApiMetric]) -> List:
+        """
+        Predict future issues based on API metrics.
+        
+        Args:
+            metrics: List of API metrics.
+            
+        Returns:
+            Empty list since pattern analyzer doesn't make predictions.
+        """
+        # Pattern analyzer doesn't make predictions
+        return []
+    
     async def analyze(self, metrics: List[ApiMetric]) -> List[Anomaly]:
         """Analyze metrics to detect pattern-based anomalies."""
         anomalies = []

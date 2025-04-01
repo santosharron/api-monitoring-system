@@ -149,7 +149,8 @@ class BaseAnalyzer(abc.ABC):
             current_value=current_value,
             trend=trend,
             environment=environment or (self.api_source.environment if self.api_source else None),
-            context=context or {}
+            context=context or {},
+            predicted_issues=[prediction_type]
         )
     
     def cleanup(self):

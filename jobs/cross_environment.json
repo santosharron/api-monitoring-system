@@ -1,0 +1,22 @@
+{
+  "job_id": "cross_environment_anomalies",
+  "description": "Correlates patterns across environments to detect cross-environment issues",
+  "analysis_config": {
+    "bucket_span": "30m",
+    "detectors": [
+      {
+        "function": "mean",
+        "field_name": "response_time_ms",
+        "by_field_name": "api_id",
+        "over_field_name": "environment"
+      }
+    ],
+    "influencers": [
+      "api_id",
+      "environment"
+    ]
+  },
+  "data_description": {
+    "time_field": "@timestamp"
+  }
+}

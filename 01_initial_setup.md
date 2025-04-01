@@ -1,88 +1,102 @@
 # Initial Setup Commands for API Monitoring System
 
-Before proceeding with Kibana visualizations, run these commands to ensure your monitoring system is properly set up and data is flowing to Elasticsearch.
+Before proceeding with Kibana visualizations, follow these steps to ensure your monitoring system is properly set up and sending data to Elasticsearch.
 
-## 1. Environment Setup
+## 1. Environment Configuration
 
-Ensure your `.env` file is properly configured with Elasticsearch credentials:
+Your `.env` file is already configured with proper Elasticsearch and MongoDB credentials:
 
 ```bash
-# Verify your .env file contains the correct Elasticsearch settings
+# Verify Elasticsearch credentials
 cat .env | grep ELASTICSEARCH
 ```
 
+Make sure these settings match your Elastic Cloud deployment:
+- `ELASTICSEARCH_CLOUD_ID`: Your Elastic Cloud deployment ID
+- `ELASTICSEARCH_USERNAME`: Set to "elastic"  
+- `ELASTICSEARCH_PASSWORD`: Your Elastic Cloud password
+
 ## 2. Start the Monitoring Application
 
-Start the API monitoring application:
+Navigate to your application directory and start the system:
 
 ```bash
-# Navigate to your application directory
-cd /path/to/api-monitoring-system
-
 # Start the application
-python main.py
+python src/main.py
 ```
 
-Verify it's running correctly by checking the logs for successful connection messages.
+Verify it's running correctly by checking the console output. You should see:
+- "API Monitoring System started successfully"
+- "Elasticsearch connection established"
+- "Initializing Kibana dashboards..." 
 
-## 3. Verify Data is Flowing to Elasticsearch
+## 3. Verify Data Flow
 
-Check that data is being sent to Elasticsearch:
+After starting the application, verify data is flowing to Elasticsearch:
 
 ```bash
-# Using curl to check the indices (replace with your credentials)
+# Check if indices are being created
 curl -u elastic:KIuc03ZYAf6IqGkE1zEap1DR https://aa16852445a8347347a1ce1a2e4eae7f50.us-east-2.aws.elastic-cloud.com:9243/_cat/indices
 
-# Or use the Elasticsearch API to check document count
-curl -u elastic:KIuc03ZYAf6IqGkE1zEap1DR https://aa16852445a8347347a1ce1a2e4eae7f50.us-east-2.aws.elastic-cloud.com:9243/api_metrics*/_count
+# Check document count in api metrics index
+curl -u elastic:KIuc03ZYAf6IqGkE1zEap1DR https://aa16852445a8347347a1ce1a2e4eae7f50.us-east-2.aws.elastic-cloud.com:9243/api_metrics/_count
 ```
 
-## 4. Install Required Tools
+You should see at least these indices:
+- `api_metrics` - Contains API performance data
+- `anomalies` - Contains detected anomalies
 
-If not already installed, install necessary tools:
+## 4. Check Application Health
+
+Use the application's built-in health endpoint:
 
 ```bash
-# Install Elastic CLI (optional, for easier management)
-pip install elastic-transport elasticsearch
-
-# Install visualization tools if working locally
-pip install matplotlib seaborn pandas
+# Check application health
+curl http://localhost:8000/health
 ```
 
-## 5. Configure Index Patterns in Kibana
+This should return a JSON response showing all components running:
+- `collector_manager`: "running"
+- `analyzer_manager`: "running" 
+- `alert_manager`: "running"
+- `kibana_dashboards`: "initialized"
+- `database`: Both Elasticsearch and MongoDB should show "available"
 
-Before creating visualizations, set up index patterns in Kibana:
+## 5. Check Dashboard Availability
 
-1. Log in to Kibana
-2. Go to Stack Management > Index Patterns
-3. Create patterns for:
-   - `api_metrics*` - For API performance metrics
-   - `api_errors*` - For error tracking
-   - `api_transactions*` - For transaction data
-
-## 6. Import Sample Dashboards (Optional)
-
-To jumpstart visualization:
+The application automatically initializes default dashboards in Kibana. Verify they're available:
 
 ```bash
-# Using elasticdump to import dashboards (if you have prepared templates)
-npm install elasticdump -g
-elasticdump --input=./dashboards/api_monitoring_dashboards.json --output=https://elastic:KIuc03ZYAf6IqGkE1zEap1DR@aa16852445a8347347a1ce1a2e4eae7f50.us-east-2.aws.elastic-cloud.com:9243/.kibana --type=data
+# Check available dashboards
+curl http://localhost:8000/dashboards
 ```
 
-## 7. Verify Monitoring Components
+This should return a list of available dashboards including:
+- "API Overview"
+- "Anomaly Detection"
+- "Cross-Environment Analysis"
 
-Ensure all components of your monitoring system are operational:
+## 6. Access Kibana
 
-```bash
-# Check collector status
-python -c "from app.collectors import status; status.check_all()"
+Now you can access Kibana directly to view your dashboards:
 
-# Verify analyzer components
-python -c "from app.analyzers import status; status.check_all()"
+1. Navigate to Elastic Cloud dashboard: https://cloud.elastic.co
+2. Log in with your Elastic credentials
+3. Select your deployment (ai-agent-monitoring)
+4. Click on "Kibana" 
 
-# Test alert system connection
-python -c "from app.alerting import test; test.connection()"
-```
+## 7. Verify Index Patterns
 
-After completing these steps, proceed to the Kibana visualization setup. 
+Before proceeding, verify that Kibana has the necessary index patterns:
+
+1. In Kibana, go to Stack Management > Index Patterns
+2. You should see these patterns created by the application:
+   - `api_metrics*`
+   - `api-anomalies*` 
+   - `api-predictions*`
+
+If any are missing, you can manually create them with the following settings:
+- Pattern: The name of the missing pattern
+- Time field: "timestamp"
+
+Once all these steps are completed successfully, proceed to the Kibana visualization guide. 

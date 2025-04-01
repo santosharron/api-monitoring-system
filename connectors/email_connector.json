@@ -1,0 +1,14 @@
+{
+  "name": "API Monitoring Email",
+  "connector_type_id": ".email",
+  "config": {
+    "from": "api-monitoring@example.com",
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": true
+  },
+  "secrets": {
+    "user": "your-username",
+    "password": "your-password"
+  }
+}
