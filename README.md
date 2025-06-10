@@ -228,13 +228,9 @@ curl "http://localhost:8000/api/v1/cross_environment_analysis"
 - Storage: 20GB+
 - Network: Stable internet connection
 
-## Contributing
+## Contributors
 
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+[Santosh VP](https://github.com/santosharron), [Riddima Benjamin](https://github.com/riddima15benjamin), [Shivi Gupta](https://github.com/Shivi-013), [Dheeraj Konakalla](https://github.com/DheerajKonakalla4)
 
 ## License
 
