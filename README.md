@@ -20,6 +20,7 @@ This system provides real-time monitoring, anomaly detection, and predictive ana
     ├── REST API
     └── Kibana Dashboards
 ```
+![image alt](https://github.com/santosharron/api-monitoring-system/blob/c5bb90b5240bb5c838a5ec578a5830be0cb8074b/system%20architecture.jpeg)
 
 ## Features
 
@@ -183,7 +184,10 @@ curl "http://localhost:8000/api/v1/anomalies"
 ```bash
 # Get cross-environment analysis
 curl "http://localhost:8000/api/v1/cross_environment_analysis"
+
 ```
+##Flowchart
+![image alt](https://github.com/santosharron/api-monitoring-system/blob/c5bb90b5240bb5c838a5ec578a5830be0cb8074b/flowchart.jpg)
 
 ## Troubleshooting
 
