@@ -238,4 +238,4 @@ curl "http://localhost:8000/api/v1/cross_environment_analysis"
 
 ## License
 
-MIT License - See LICENSE file for details
+Apache-2.0 License - See LICENSE file for details
