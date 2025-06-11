@@ -130,17 +130,23 @@ Available dashboards:
    - Error rates
    - Success rates
    - Environment distribution
+     
+![overview](https://github.com/user-attachments/assets/48b48222-1364-4f5e-8a41-f23decef0ce9)
 
 2. **Anomaly Detection**
    - Detected anomalies
    - Severity distribution
    - Pattern changes
    - Impact analysis
+     
+![error rate](https://github.com/user-attachments/assets/44c4984a-35cf-4884-a650-9d5f58bc5b7c)
 
 3. **Cross-Environment Analysis**
    - Environment correlation
    - Impact scores
    - Issue propagation
+   
+![cross env](https://github.com/user-attachments/assets/ae075655-bf13-44ed-b08e-38157848063b)
 
 ### 3. Logs and Monitoring
 
