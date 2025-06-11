@@ -1,4 +1,4 @@
-# AI-Powered API Monitoring and Anomaly Detection System
+# Cognitive API Monitoring System with Predictive Alerting
 
 This project is a real-time API monitoring and anomaly detection system built to track and analyze API performance across AWS, Azure, and GCP environments. It monitors response times and error rates with environment-specific thresholds and uses historical trends to detect unusual spikes or changes in patterns. It predicts potential failures based on past data, assigns severity levels, and sends alerts through Slack or Email to help teams act before issues impact users. By correlating data across environments and identifying problems early, it helps engineering teams reduce downtime, improve reliability, and maintain consistent performance across cloud platforms—making it a valuable tool for businesses that rely on stable and responsive APIs.
 
