@@ -32,7 +32,7 @@ statsmodels==0.13.5
 prophet==1.1.2
 
 # Time series anomaly detection
-pyod==1.0.7
+pyod==2.0.5
 luminol==0.4
 
 # Storage
