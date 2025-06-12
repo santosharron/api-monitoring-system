@@ -54,7 +54,7 @@ prometheus-client==0.16.0
 pytest-mock==3.10.0
 
 # AWS integration
-boto3==1.26.115
+boto3==1.38.35
 
 # Alerting
 slackclient==2.9.4
