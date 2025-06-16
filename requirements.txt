@@ -41,7 +41,7 @@ redis==4.5.4
 motor>=3.7.0
 
 # Visualization
-plotly==5.14.1
+plotly==6.1.2
 dash==3.0.4
 
 # Logging and monitoring
