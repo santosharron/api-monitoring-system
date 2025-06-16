@@ -47,7 +47,7 @@ dash==3.0.4
 # Logging and monitoring
 opentelemetry-api==1.34.1
 opentelemetry-sdk==1.16.0
-opentelemetry-exporter-otlp==1.16.0
+opentelemetry-exporter-otlp==1.34.1
 prometheus-client==0.22.1
 
 # Testing
