@@ -51,7 +51,7 @@ opentelemetry-exporter-otlp==1.16.0
 prometheus-client==0.22.1
 
 # Testing
-pytest-mock==3.10.0
+pytest-mock==3.14.1
 
 # AWS integration
 boto3==1.38.35
