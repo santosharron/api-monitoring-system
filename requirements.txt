@@ -28,7 +28,7 @@ pytest>=7.2.0
 pytest-asyncio>=0.20.2
 
 # Data processing and analysis
-statsmodels==0.13.5
+statsmodels==0.14.4
 prophet==1.1.2
 
 # Time series anomaly detection
