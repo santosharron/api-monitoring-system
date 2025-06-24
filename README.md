@@ -1,6 +1,7 @@
 # Cognitive API Monitoring System with Predictive Alerting
 
-The AI Monitoring API System is a critical advancement in how we manage and protect our API operations across AWS, Azure, and GCP. This system monitors real-time performance, detects anomalies based on historical trends, and predicts potential failures before they occur. It enables our teams to respond quickly and decisively—often before any impact reaches our users. By correlating data across multiple cloud environments and delivering precise, actionable alerts, we’re not just reacting to issues—we’re staying ahead of them. This is a key step in strengthening our resilience, reducing downtime, and delivering consistent performance to our customers around the world.
+AI Monitoring API System is a real-time, cloud-agnostic platform where AI continuously monitors API requests across AWS, Azure, and GCP. It detects anomalies, identifies spikes in response times or errors, and sends instant alerts via Slack and Email—enabling teams to act before issues impact users. Built with MongoDB, Elasticsearch, and Kibana, it ensures reliable, proactive API performance across environments.
+
 
 
 ## System Architecture
