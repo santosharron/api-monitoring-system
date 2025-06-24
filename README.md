@@ -1,6 +1,6 @@
 # Cognitive API Monitoring System with Predictive Alerting
 
-This project is a real-time API monitoring and anomaly detection system built to track and analyze API performance across AWS, Azure, and GCP environments. It monitors response times and error rates with environment-specific thresholds and uses historical trends to detect unusual spikes or changes in patterns. It predicts potential failures based on past data, assigns severity levels, and sends alerts through Slack or Email to help teams act before issues impact users. By correlating data across environments and identifying problems early, it helps engineering teams reduce downtime, improve reliability, and maintain consistent performance across cloud platforms—making it a valuable tool for businesses that rely on stable and responsive APIs.
+The AI Monitoring API System is a critical advancement in how we manage and protect our API operations across AWS, Azure, and GCP. This system monitors real-time performance, detects anomalies based on historical trends, and predicts potential failures before they occur. It enables our teams to respond quickly and decisively—often before any impact reaches our users. By correlating data across multiple cloud environments and delivering precise, actionable alerts, we’re not just reacting to issues—we’re staying ahead of them. This is a key step in strengthening our resilience, reducing downtime, and delivering consistent performance to our customers around the world.
 
 
 ## System Architecture
